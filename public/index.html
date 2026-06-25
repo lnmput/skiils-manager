@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Skills Manager</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="masthead">
+        <div>
+          <p class="eyebrow">Local Codex</p>
+          <h1>Skills Manager</h1>
+        </div>
+        <div class="stats" aria-live="polite">
+          <span><strong id="enabledCount">0</strong> enabled</span>
+          <span><strong id="disabledCount">0</strong> disabled</span>
+        </div>
+      </header>
+
+      <section class="toolbar" aria-label="Skill filters">
+        <div class="searchWrap">
+          <span aria-hidden="true">⌕</span>
+          <input id="search" type="search" placeholder="Search skills or functions" autocomplete="off">
+        </div>
+        <div class="segments">
+          <button class="segment active" data-filter="all" type="button">All</button>
+          <button class="segment" data-filter="enabled" type="button">Enabled</button>
+          <button class="segment" data-filter="disabled" type="button">Disabled</button>
+        </div>
+      </section>
+
+      <nav class="categoryTabs" id="categoryTabs" aria-label="Skill categories"></nav>
+
+      <section class="bulkBar" aria-label="Bulk skill actions">
+        <div>
+          <strong id="scopeLabel">All skills</strong>
+          <span id="scopeMeta">0 visible</span>
+        </div>
+        <div class="bulkActions">
+          <button class="bulkButton enable" id="bulkEnable" type="button">Enable visible</button>
+          <button class="bulkButton" id="bulkDisable" type="button">Disable visible</button>
+        </div>
+      </section>
+
+      <section class="table" aria-label="Skills">
+        <div class="row head">
+          <span>Skill</span>
+          <span>Function</span>
+          <span>Source</span>
+          <span>Status</span>
+          <span>Action</span>
+        </div>
+        <div id="skills"></div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="/app.js"></script>
+  </body>
+</html>
