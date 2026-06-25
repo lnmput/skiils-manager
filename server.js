@@ -74,7 +74,7 @@ async function readSkills(root, state) {
   const skills = [];
 
   for (const entry of entries) {
-    if (!entry.isDirectory() || entry.name === ".system") continue;
+    if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
     const skillPath = path.join(base, entry.name);
     const skillFile = path.join(skillPath, "SKILL.md");
     if (!(await exists(skillFile))) continue;
@@ -127,13 +127,20 @@ async function moveSkill({ source, slug, action }) {
   const toBase = action === "disable" ? root.disabled : root.enabled;
   const from = path.join(fromBase, slug);
   const to = path.join(toBase, slug);
+  let conflictBackup = "";
 
   if (!(await exists(from))) throw new Error("Skill not found");
-  if (await exists(to)) throw new Error("Target already exists");
 
   await fs.mkdir(toBase, { recursive: true });
+  if (await exists(to)) {
+    const conflictBase = path.join(toBase, ".skills-manager-conflicts");
+    conflictBackup = path.join(conflictBase, `${slug}-${Date.now()}`);
+    await fs.mkdir(conflictBase, { recursive: true });
+    await fs.rename(to, conflictBackup);
+  }
+
   await fs.rename(from, to);
-  return { source, slug, state: action === "disable" ? "disabled" : "enabled" };
+  return { source, slug, state: action === "disable" ? "disabled" : "enabled", conflictBackup };
 }
 
 async function readBody(req) {

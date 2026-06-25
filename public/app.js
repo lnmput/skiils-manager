@@ -157,7 +157,8 @@ async function moveSkill(button) {
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Move failed");
-    showToast(`${payload.slug} ${payload.action === "disable" ? "disabled" : "enabled"}`);
+    const verb = payload.action === "disable" ? "disabled" : "enabled";
+    showToast(data.conflictBackup ? `${payload.slug} ${verb}; duplicate backed up` : `${payload.slug} ${verb}`);
     await loadSkills();
   } catch (error) {
     showToast(error.message);
