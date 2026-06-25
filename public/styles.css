@@ -63,6 +63,35 @@ h1 {
   letter-spacing: 0;
 }
 
+.headerActions {
+  display: grid;
+  justify-items: end;
+  gap: 12px;
+}
+
+.languageSwitch {
+  display: inline-flex;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  gap: 1px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.languageButton {
+  border: 0;
+  background: var(--panel);
+  color: var(--ink);
+  padding: 8px 11px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.languageButton.active {
+  background: var(--accent);
+  color: #f8f1e5;
+}
+
 .stats {
   display: flex;
   gap: 10px;
@@ -375,6 +404,10 @@ input {
 
   .stats {
     justify-content: flex-start;
+  }
+
+  .headerActions {
+    justify-items: start;
   }
 
   .segments {

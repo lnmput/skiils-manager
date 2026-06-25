@@ -4,36 +4,43 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Skills Manager</title>
+    <link rel="icon" href="data:,">
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
     <main class="shell">
       <header class="masthead">
         <div>
-          <p class="eyebrow">Local Codex</p>
+          <p class="eyebrow" data-i18n="eyebrow">Local Codex</p>
           <h1>Skills Manager</h1>
         </div>
-        <div class="stats" aria-live="polite">
-          <span><strong id="enabledCount">0</strong> enabled</span>
-          <span><strong id="disabledCount">0</strong> disabled</span>
+        <div class="headerActions">
+          <div class="languageSwitch" aria-label="Language">
+            <button class="languageButton active" data-lang="en" type="button">English</button>
+            <button class="languageButton" data-lang="zh" type="button">中文</button>
+          </div>
+          <div class="stats" aria-live="polite">
+            <span><strong id="enabledCount">0</strong> <span id="enabledLabel">enabled</span></span>
+            <span><strong id="disabledCount">0</strong> <span id="disabledLabel">disabled</span></span>
+          </div>
         </div>
       </header>
 
-      <section class="toolbar" aria-label="Skill filters">
+      <section class="toolbar" aria-label="Skill filters" data-i18n-aria="skillFilters">
         <div class="searchWrap">
           <span aria-hidden="true">⌕</span>
           <input id="search" type="search" placeholder="Search skills or functions" autocomplete="off">
         </div>
         <div class="segments">
-          <button class="segment active" data-filter="all" type="button">All</button>
-          <button class="segment" data-filter="enabled" type="button">Enabled</button>
-          <button class="segment" data-filter="disabled" type="button">Disabled</button>
+          <button class="segment active" data-filter="all" type="button"></button>
+          <button class="segment" data-filter="enabled" type="button"></button>
+          <button class="segment" data-filter="disabled" type="button"></button>
         </div>
       </section>
 
-      <nav class="categoryTabs" id="categoryTabs" aria-label="Skill categories"></nav>
+      <nav class="categoryTabs" id="categoryTabs" aria-label="Skill categories" data-i18n-aria="skillCategories"></nav>
 
-      <section class="bulkBar" aria-label="Bulk skill actions">
+      <section class="bulkBar" aria-label="Bulk skill actions" data-i18n-aria="bulkActions">
         <div>
           <strong id="scopeLabel">All skills</strong>
           <span id="scopeMeta">0 visible</span>
@@ -44,13 +51,13 @@
         </div>
       </section>
 
-      <section class="table" aria-label="Skills">
+      <section class="table" aria-label="Skills" data-i18n-aria="skills">
         <div class="row head">
-          <span>Skill</span>
-          <span>Function</span>
-          <span>Source</span>
-          <span>Status</span>
-          <span>Action</span>
+          <span data-i18n="tableSkill">Skill</span>
+          <span data-i18n="tableFunction">Function</span>
+          <span data-i18n="tableSource">Source</span>
+          <span data-i18n="tableStatus">Status</span>
+          <span data-i18n="tableAction">Action</span>
         </div>
         <div id="skills"></div>
       </section>
