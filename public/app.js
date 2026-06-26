@@ -3,11 +3,13 @@ const state = {
   filter: "all",
   category: "all",
   query: "",
+  scope: localStorage.getItem("skills-manager-scope") || "personal",
   lang: localStorage.getItem("skills-manager-lang") || (navigator.language.startsWith("zh") ? "zh" : "en")
 };
 
 const els = {
   skills: document.querySelector("#skills"),
+  sourceTabs: document.querySelector("#sourceTabs"),
   categoryTabs: document.querySelector("#categoryTabs"),
   search: document.querySelector("#search"),
   enabledCount: document.querySelector("#enabledCount"),
@@ -18,6 +20,7 @@ const els = {
   scopeMeta: document.querySelector("#scopeMeta"),
   bulkEnable: document.querySelector("#bulkEnable"),
   bulkDisable: document.querySelector("#bulkDisable"),
+  bulkActions: document.querySelector(".bulkActions"),
   toast: document.querySelector("#toast")
 };
 
@@ -40,6 +43,9 @@ const copy = {
     filterDisabled: "Disabled",
     all: "All",
     searchPlaceholder: "Search skills or functions",
+    sourceGroups: "Skill source groups",
+    personalSkills: "Personal skills",
+    codexSkills: "Codex system / plugins",
     skillFilters: "Skill filters",
     skillCategories: "Skill categories",
     bulkActions: "Bulk skill actions",
@@ -49,6 +55,9 @@ const copy = {
     tableSource: "Source",
     tableStatus: "Status",
     tableAction: "Action",
+    readonly: "read-only",
+    managedByCodex: "Managed by Codex",
+    readonlyVisible: "read-only",
     noResults: "No skills match the current view.",
     noDescription: "No description in SKILL.md.",
     visible: "visible",
@@ -76,6 +85,9 @@ const copy = {
     filterDisabled: "已禁用",
     all: "全部",
     searchPlaceholder: "搜索技能或功能",
+    sourceGroups: "技能来源分组",
+    personalSkills: "个人技能",
+    codexSkills: "Codex 系统/插件",
     skillFilters: "技能筛选",
     skillCategories: "技能分类",
     bulkActions: "批量技能操作",
@@ -85,6 +97,9 @@ const copy = {
     tableSource: "来源",
     tableStatus: "状态",
     tableAction: "操作",
+    readonly: "只读",
+    managedByCodex: "由 Codex 管理",
+    readonlyVisible: "只读",
     noResults: "当前视图没有匹配的技能。",
     noDescription: "SKILL.md 中没有描述。",
     visible: "可见",
@@ -114,6 +129,10 @@ function normalize(value) {
   return value.toLowerCase().trim();
 }
 
+function scopedSkills() {
+  return state.skills.filter((skill) => (state.scope === "codex" ? skill.readonly : !skill.readonly));
+}
+
 function applyLanguage() {
   document.documentElement.lang = state.lang === "zh" ? "zh-CN" : "en";
   document.querySelectorAll("[data-i18n]").forEach((element) => {
@@ -135,7 +154,7 @@ function applyLanguage() {
 
 function visibleSkills() {
   const query = normalize(state.query);
-  return state.skills.filter((skill) => {
+  return scopedSkills().filter((skill) => {
     const matchesFilter = state.filter === "all" || skill.state === state.filter;
     const matchesCategory = state.category === "all" || skill.category === state.category;
     const haystack = normalize(`${skill.slug} ${skill.name} ${skill.description} ${skill.sourceLabel}`);
@@ -144,13 +163,15 @@ function visibleSkills() {
 }
 
 function render() {
-  const enabled = state.skills.filter((skill) => skill.state === "enabled").length;
-  const disabled = state.skills.filter((skill) => skill.state === "disabled").length;
+  const scoped = scopedSkills();
+  const enabled = scoped.filter((skill) => skill.state === "enabled").length;
+  const disabled = scoped.filter((skill) => skill.state === "disabled").length;
   const items = visibleSkills();
   els.enabledCount.textContent = enabled;
   els.disabledCount.textContent = disabled;
   els.enabledLabel.textContent = t("enabled");
   els.disabledLabel.textContent = t("disabled");
+  renderSourceTabs();
   renderCategories();
   renderBulkActions(items);
   if (!items.length) {
@@ -162,39 +183,70 @@ function render() {
     <article class="row">
       <div class="skillName">${escapeHtml(skill.slug)}</div>
       <p class="desc">${escapeHtml(skill.description || t("noDescription"))}</p>
-      <span class="pill">${escapeHtml(skill.sourceLabel)}</span>
-      <span class="pill status ${skill.state === "disabled" ? "disabled" : ""}">${escapeHtml(t(skill.state))} · ${escapeHtml(categoryLabel(skill.category))}</span>
-      <button class="action ${skill.state === "disabled" ? "enable" : ""}"
-        type="button"
-        data-source="${escapeHtml(skill.source)}"
-        data-slug="${escapeHtml(skill.slug)}"
-        data-action="${skill.state === "enabled" ? "disable" : "enable"}">
-        ${skill.state === "enabled" ? escapeHtml(t("disableThis")) : escapeHtml(t("enableThis"))}
-      </button>
+      <span class="pill" title="${escapeHtml(skill.path)}">${escapeHtml(skill.sourceLabel)}</span>
+      <span class="pill status ${skill.state === "disabled" ? "disabled" : ""}">${escapeHtml(t(skill.state))}${skill.readonly ? ` · ${escapeHtml(t("readonly"))}` : ""} · ${escapeHtml(categoryLabel(skill.category))}</span>
+      ${renderAction(skill)}
     </article>
   `).join("");
+}
+
+function renderSourceTabs() {
+  const personalCount = state.skills.filter((skill) => !skill.readonly).length;
+  const codexCount = state.skills.filter((skill) => skill.readonly).length;
+  const tabs = [
+    { id: "personal", label: t("personalSkills"), count: personalCount },
+    { id: "codex", label: t("codexSkills"), count: codexCount }
+  ];
+
+  els.sourceTabs.innerHTML = tabs.map((tab) => `
+    <button class="sourceTab ${state.scope === tab.id ? "active" : ""}"
+      type="button"
+      data-scope="${tab.id}">
+      <span>${escapeHtml(tab.label)}</span>
+      <strong>${tab.count}</strong>
+    </button>
+  `).join("");
+}
+
+function renderAction(skill) {
+  if (skill.readonly) {
+    return `<button class="action readonly" type="button" disabled>${escapeHtml(t("managedByCodex"))}</button>`;
+  }
+
+  return `<button class="action ${skill.state === "disabled" ? "enable" : ""}"
+    type="button"
+    data-source="${escapeHtml(skill.source)}"
+    data-slug="${escapeHtml(skill.slug)}"
+    data-action="${skill.state === "enabled" ? "disable" : "enable"}">
+    ${skill.state === "enabled" ? escapeHtml(t("disableThis")) : escapeHtml(t("enableThis"))}
+  </button>`;
 }
 
 function renderBulkActions(items) {
   const disabledVisible = items.filter((skill) => skill.state === "disabled").length;
   const enabledVisible = items.filter((skill) => skill.state === "enabled").length;
+  const disabledActionable = items.filter((skill) => skill.state === "disabled" && !skill.readonly).length;
+  const enabledActionable = items.filter((skill) => skill.state === "enabled" && !skill.readonly).length;
   const category = categoryLabel(state.category);
   const filter = state.filter === "all" ? "" : ` · ${t(state.filter)}`;
   const query = state.query.trim() ? ` · "${state.query.trim()}"` : "";
 
   els.scopeLabel.textContent = `${category}${filter}${query}`;
-  els.scopeMeta.textContent = `${items.length} ${t("visible")} · ${enabledVisible} ${t("enabled")} · ${disabledVisible} ${t("disabled")}`;
-  els.bulkEnable.textContent = `${t("enableVisible")} (${disabledVisible})`;
-  els.bulkDisable.textContent = `${t("disableVisible")} (${enabledVisible})`;
-  els.bulkEnable.title = t("enableTitle")(disabledVisible);
-  els.bulkDisable.title = t("disableTitle")(enabledVisible);
-  els.bulkEnable.disabled = disabledVisible === 0;
-  els.bulkDisable.disabled = enabledVisible === 0;
+  els.scopeMeta.textContent = state.scope === "codex"
+    ? `${items.length} ${t("visible")} · ${enabledVisible} ${t("enabled")} · ${items.filter((skill) => skill.readonly).length} ${t("readonlyVisible")}`
+    : `${items.length} ${t("visible")} · ${enabledVisible} ${t("enabled")} · ${disabledVisible} ${t("disabled")}`;
+  els.bulkEnable.textContent = `${t("enableVisible")} (${disabledActionable})`;
+  els.bulkDisable.textContent = `${t("disableVisible")} (${enabledActionable})`;
+  els.bulkEnable.title = t("enableTitle")(disabledActionable);
+  els.bulkDisable.title = t("disableTitle")(enabledActionable);
+  els.bulkEnable.disabled = disabledActionable === 0;
+  els.bulkDisable.disabled = enabledActionable === 0;
+  els.bulkActions.hidden = state.scope === "codex";
 }
 
 function renderCategories() {
   const counts = new Map(categories.map((category) => [category.id, 0]));
-  for (const skill of state.skills) {
+  for (const skill of scopedSkills()) {
     counts.set("all", (counts.get("all") || 0) + 1);
     counts.set(skill.category, (counts.get(skill.category) || 0) + 1);
   }
@@ -270,7 +322,7 @@ async function moveSkill(button) {
 
 async function moveVisibleSkills(action) {
   const targets = visibleSkills().filter((skill) =>
-    action === "enable" ? skill.state === "disabled" : skill.state === "enabled"
+    action === "enable" ? skill.state === "disabled" && !skill.readonly : skill.state === "enabled" && !skill.readonly
   );
 
   if (!targets.length) return;
@@ -331,6 +383,19 @@ document.querySelector(".segments").addEventListener("click", (event) => {
   document.querySelectorAll(".segment").forEach((item) => item.classList.remove("active"));
   button.classList.add("active");
   state.filter = button.dataset.filter;
+  render();
+});
+
+els.sourceTabs.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-scope]");
+  if (!button || button.dataset.scope === state.scope) return;
+
+  state.scope = button.dataset.scope;
+  state.filter = "all";
+  state.category = "all";
+  localStorage.setItem("skills-manager-scope", state.scope);
+  document.querySelectorAll(".segment").forEach((item) => item.classList.remove("active"));
+  document.querySelector("[data-filter='all']").classList.add("active");
   render();
 });
 

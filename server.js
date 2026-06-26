@@ -11,15 +11,28 @@ const HOME = os.homedir();
 const roots = [
   {
     id: "agents",
-    label: ".agents",
+    label: "Personal: .agents",
     enabled: path.join(HOME, ".agents", "skills"),
     disabled: path.join(HOME, ".agents", "skills.disabled")
   },
   {
     id: "codex",
-    label: ".codex",
+    label: "Personal: .codex",
     enabled: path.join(HOME, ".codex", "skills"),
     disabled: path.join(HOME, ".codex", "skills.disabled")
+  }
+];
+
+const readOnlyRoots = [
+  {
+    id: "codex-system",
+    label: "Codex system",
+    base: path.join(HOME, ".codex", "skills", ".system")
+  },
+  {
+    id: "codex-vendor",
+    label: "Codex vendor",
+    base: path.join(HOME, ".codex", "vendor_imports", "skills")
   }
 ];
 
@@ -67,8 +80,7 @@ async function exists(target) {
   }
 }
 
-async function readSkills(root, state) {
-  const base = root[state];
+async function readSkillBase({ base, rootId, sourceLabel, state = "enabled", readonly = false }) {
   if (!(await exists(base))) return [];
   const entries = await fs.readdir(base, { withFileTypes: true });
   const skills = [];
@@ -87,13 +99,14 @@ async function readSkills(root, state) {
     }
 
     skills.push({
-      id: `${root.id}:${state}:${entry.name}`,
+      id: `${rootId}:${state}:${entry.name}`,
       slug: entry.name,
       name: meta.name || entry.name,
       description: meta.description,
-      source: root.id,
-      sourceLabel: root.label,
+      source: rootId,
+      sourceLabel,
       state,
+      readonly,
       path: skillPath
     });
   }
@@ -101,11 +114,76 @@ async function readSkills(root, state) {
   return skills.sort((a, b) => a.slug.localeCompare(b.slug));
 }
 
+async function readSkills(root, state) {
+  return readSkillBase({
+    base: root[state],
+    rootId: root.id,
+    sourceLabel: root.label,
+    state
+  });
+}
+
+async function findPluginSkillBases() {
+  const cacheRoot = path.join(HOME, ".codex", "plugins", "cache");
+  const bases = [];
+  if (!(await exists(cacheRoot))) return bases;
+
+  async function visit(current, depth) {
+    if (depth > 8) return;
+    let entries = [];
+    try {
+      entries = await fs.readdir(current, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.name.startsWith(".") || entry.name === "internal-skills") continue;
+      const next = path.join(current, entry.name);
+      if (entry.name === "skills") {
+        bases.push(next);
+        continue;
+      }
+      await visit(next, depth + 1);
+    }
+  }
+
+  await visit(cacheRoot, 0);
+  return bases;
+}
+
+function pluginLabel(base) {
+  const relative = path.relative(path.join(HOME, ".codex", "plugins", "cache"), base);
+  const parts = relative.split(path.sep).filter(Boolean);
+  return parts.length > 1 ? `Plugin: ${parts.at(-3) || parts[0]}` : "Plugin";
+}
+
 async function listSkills() {
-  const groups = await Promise.all(
+  const movableGroups = await Promise.all(
     roots.flatMap((root) => [readSkills(root, "enabled"), readSkills(root, "disabled")])
   );
-  return groups.flat();
+  const readOnlyGroups = await Promise.all(
+    readOnlyRoots.map((root) =>
+      readSkillBase({
+        base: root.base,
+        rootId: root.id,
+        sourceLabel: root.label,
+        readonly: true
+      })
+    )
+  );
+  const pluginGroups = await Promise.all(
+    (await findPluginSkillBases()).map((base) =>
+      readSkillBase({
+        base,
+        rootId: `plugin:${path.relative(path.join(HOME, ".codex", "plugins", "cache"), base)}`,
+        sourceLabel: pluginLabel(base),
+        readonly: true
+      })
+    )
+  );
+
+  return [...movableGroups, ...readOnlyGroups, ...pluginGroups].flat();
 }
 
 function getRoot(source) {
